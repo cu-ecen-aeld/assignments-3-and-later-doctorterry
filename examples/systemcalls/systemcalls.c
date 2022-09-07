@@ -74,7 +74,7 @@ bool do_exec(int count, ...)
 */
 
     pid_t pid = fork();
-    if (pid == -1) // Fork fails
+    if (pid == -1)
     {
         perror("Fork failed");
         return false;
@@ -84,13 +84,15 @@ bool do_exec(int count, ...)
         execv(command[0], command);
 
         // Since execv is called it will not get to this exit status unless it fails
-		exit(-1);
+		exit(1);
     }
 
     int status = 0;
-    pid_t childpid = wait(&status);
-    int childRet = WEXITSTATUS(childpid);
-    if (childRet == -1)
+//    pid_t childpid = wait(&status);
+    // int childRet = WEXITSTATUS(childpid);
+//    if (childRet == -1)
+    wait(&status);
+    if (status != 0)
     {
         perror("Failed to lauch execv()");
         return false;
