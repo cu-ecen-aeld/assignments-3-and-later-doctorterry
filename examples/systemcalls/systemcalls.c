@@ -4,7 +4,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
-
+#include <fcntl.h>
 
 /**
  * @param cmd the command to execute with system()
@@ -89,7 +89,7 @@ bool do_exec(int count, ...)
 
     int status = 0;
     pid_t childpid = wait(&status);
-    int childRet = WEXITSTATUS(status);
+    int childRet = WEXITSTATUS(childpid);
     if (childRet == -1)
     {
         perror("Failed to lauch execv()");
@@ -134,8 +134,6 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
 */
     int fd;
 
- 
-
     pid_t pid = fork();
     if (pid == -1)
     {
@@ -144,6 +142,7 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
     }
     else if (pid == 0) // Able to create a child
     {
+        fd = open(outputfile, O_WRONLY | O_TRUNC | O_CREAT, 0644);
         if (fd == -1){
             perror("Failed to open file.\n");
             return false;
@@ -161,7 +160,7 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
 
     int status = 0;
     pid_t childpid = wait(&status);
-    int childRet = WEXITSTATUS(status);
+    int childRet = WEXITSTATUS(childpid);
     if (childRet == -1)
     {
         perror("Failed to lauch execv()");
