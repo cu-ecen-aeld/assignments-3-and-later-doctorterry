@@ -1,4 +1,10 @@
 #include "systemcalls.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
 
 /**
  * @param cmd the command to execute with system()
@@ -16,6 +22,14 @@ bool do_system(const char *cmd)
  *   and return a boolean true if the system() call completed with success
  *   or false() if it returned a failure
 */
+
+    if (system(cmd) == -1)
+    {
+        perror("Failed to lauch system()");
+        return false;
+    }
+
+// TODO END
 
     return true;
 }
@@ -59,6 +73,32 @@ bool do_exec(int count, ...)
  *
 */
 
+    pid_t pid = fork();
+    if (pid == -1) // Fork fails
+    {
+        perror("Fork failed");
+        return false;
+    }
+    else if (pid == 0) // Able to create a child
+    {
+        execv(command[0], command);
+
+        // Since execv is called it will not get to this exit status unless it fails
+		exit(-1);
+    }
+
+    int status = 0;
+    pid_t childpid = wait(&status);
+    int childRet = WEXITSTATUS(status);
+    if (childRet == -1)
+    {
+        perror("Failed to lauch execv()");
+        return false;
+    }
+
+// END TODO
+
+
     va_end(args);
 
     return true;
@@ -92,6 +132,43 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
  *   The rest of the behaviour is same as do_exec()
  *
 */
+    int fd;
+
+ 
+
+    pid_t pid = fork();
+    if (pid == -1)
+    {
+        perror("Fork failed.\n");
+        return false;
+    }
+    else if (pid == 0) // Able to create a child
+    {
+        if (fd == -1){
+            perror("Failed to open file.\n");
+            return false;
+    }
+        if (dup2(fd, 1) == -1)
+        {
+            perror("Failed redirection");
+			return false;
+        }
+        execv(command[0], command);
+
+        // Since execv is called it will not get to this exit status unless it fails
+		exit(-1);
+    }
+
+    int status = 0;
+    pid_t childpid = wait(&status);
+    int childRet = WEXITSTATUS(status);
+    if (childRet == -1)
+    {
+        perror("Failed to lauch execv()");
+        return false;
+    }
+
+// END TODO
 
     va_end(args);
 
