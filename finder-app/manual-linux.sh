@@ -115,8 +115,8 @@ sudo cp -a "${SYSROOT}"/lib64 .
 # Note: Steps taken from lecture "Week 2: Linux Root Filesystem (11:40)"
 # There are two devices you need to boot a device initially: 1) Null device 2) Console device
 echo "10) Make device nodes"
-sudo mknod -m 666 dev/null c 1 3 # Null device
-sudo mknod -m 666 dev/null c 5 1 # Console device.
+#sudo mknod -m 666 dev/null c 1 3 # Null device
+#sudo mknod -m 666 dev/null c 5 1 # Console device.
 # TODO: End
 
 # TODO: Clean and build the writer utility
