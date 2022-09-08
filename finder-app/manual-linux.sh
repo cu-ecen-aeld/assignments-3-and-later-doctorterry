@@ -37,16 +37,16 @@ if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
     # TODO: Add your kernel build steps here
     # Note: Steps taken from lecture "Week 2: Building the Linux Kernel" 
     echo "1) Clean the build"
-    #make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE mrproper
+    make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE mrproper
     echo "2) Configure a virtualized Arm board"
-    #make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE defconfig
+    make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE defconfig
     echo "3) Build a kernel image for booting with QEMU."
     # Note: Needed to install "flex", "bison" and "libssl-dev" using apt to complete this phase
-    #make -j4 ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE all
+    make -j4 ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE all
     echo "4) Build kernel modules"
-    #make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE modules
+    make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE modules
     echo "5) Build the devicetree binaries"
-    #make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE dtbs
+    make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE dtbs
     # TODO: End
 
 fi
