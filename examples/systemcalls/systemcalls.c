@@ -161,9 +161,11 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
     }
 
     int status = 0;
-    pid_t childpid = wait(&status);
-    int childRet = WEXITSTATUS(childpid);
-    if (childRet == -1)
+//    pid_t childpid = wait(&status);
+    // int childRet = WEXITSTATUS(childpid);
+//    if (childRet == -1)
+    wait(&status);
+    if (status != 0)
     {
         perror("Failed to lauch execv()");
         return false;
