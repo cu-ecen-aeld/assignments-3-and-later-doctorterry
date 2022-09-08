@@ -12,14 +12,14 @@ int main(int argc, char *argv[]){
     int fd;
 
     if(argc != 3){
-        printf("Invalid number of arguments\n");
+        printf("WRITER: Invalid number of arguments (exit(1))\n");
         syslog(LOG_ERR, "ERROR: Invalid number of parameters. Failed.");
         exit(1);
     }
 
     fd = open (argv[1], O_WRONLY | O_CREAT | O_TRUNC, 0664);
     if (fd == -1){
-        printf("Failed to open file.\n");
+        printf("WRITER: Failed to open file (exit(1)).\n");
         syslog(LOG_ERR, "ERROR: Could not open file. Failed.");
         exit(1) ;
     }
@@ -29,6 +29,8 @@ int main(int argc, char *argv[]){
     syslog(LOG_DEBUG, "Writing %s to %s", argv[2], argv[1]);
 
     close(fd);
+    
+    printf("WRITER: Success (exit(0))\n");
 
     exit(0);
 

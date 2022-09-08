@@ -37,22 +37,22 @@ if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
     # TODO: Add your kernel build steps here
     # Note: Steps taken from lecture "Week 2: Building the Linux Kernel" 
     echo "1) Clean the build"
-    make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE mrproper
+    #make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE mrproper
     echo "2) Configure a virtualized Arm board"
-    make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE defconfig
+    #make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE defconfig
     echo "3) Build a kernel image for booting with QEMU."
     # Note: Needed to install "flex", "bison" and "libssl-dev" using apt to complete this phase
-    # ** Uncommented to save time. Uncomment if you wish to recompile. 
-    make -j4 ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE all
+    #make -j4 ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE all
     echo "4) Build kernel modules"
-    make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE modules
+    #make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE modules
     echo "5) Build the devicetree binaries"
-    make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE dtbs
+    #make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE dtbs
     # TODO: End
 
 fi
 
 echo "Adding the Image in outdir"
+cp ${OUTDIR}/linux-stable/arch/$ARCH/boot/Image ${OUTDIR}
 
 echo "Creating the staging directory for the root filesystem"
 cd "$OUTDIR"
@@ -94,12 +94,13 @@ fi
 # TODO: Make and install busybox
 # Note: Steps taken from lecture "Week 2: Linux Root Filesystem (10:45) and MELP (p.206)"
 echo "8) Make and install BusyBox"
-# ** Uncommented to save time. Uncomment if you wish to recompile. 
+# ** Uncommented to save time. Uncomment if you wish to recompile.
+sudo chmod u+s ${OUTDIR}/busybox 
 make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE CONFIG_PREFIX=${OUTDIR}/rootfs install
-cd "${OUTDIR}/rootfs"
 # TODO: End
 
 echo "Library dependencies"
+cd "${OUTDIR}/rootfs"
 ${CROSS_COMPILE}readelf -a bin/busybox | grep "program interpreter"
 ${CROSS_COMPILE}readelf -a bin/busybox | grep "Shared library"
 
@@ -137,6 +138,7 @@ cp -a conf/username.txt "${OUTDIR}/rootfs/home/conf"
 
 # TODO: Chown the root directory
 echo "13) Chown the root directory"
+cd "${OUTDIR}/rootfs"
 sudo chown -R root:root *
 # TODO: End
 
@@ -146,3 +148,5 @@ cd "$OUTDIR/rootfs"
 find * . | cpio -o --format=newc > ../initramfs.cpio
 gzip -c ../initramfs.cpio > ../initramfs.cpio.gz
 # TODO: End
+
+echo "Process Complete"
