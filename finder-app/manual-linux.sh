@@ -43,7 +43,7 @@ if [ ! -e ${OUTDIR}/linux-stable/arch/${ARCH}/boot/Image ]; then
     echo "3) Build a kernel image for booting with QEMU."
     # Note: Needed to install "flex", "bison" and "libssl-dev" using apt to complete this phase
     # ** Uncommented to save time. Uncomment if you wish to recompile. 
-    #make -j4 ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE all
+    make -j4 ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE all
     echo "4) Build kernel modules"
     make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE modules
     echo "5) Build the devicetree binaries"
@@ -95,7 +95,7 @@ fi
 # Note: Steps taken from lecture "Week 2: Linux Root Filesystem (10:45) and MELP (p.206)"
 echo "8) Make and install BusyBox"
 # ** Uncommented to save time. Uncomment if you wish to recompile. 
-#make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE CONFIG_PREFIX=${OUTDIR}/rootfs install
+make ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE CONFIG_PREFIX=${OUTDIR}/rootfs install
 cd "${OUTDIR}/rootfs"
 # TODO: End
 
