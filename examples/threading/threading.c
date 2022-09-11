@@ -69,7 +69,7 @@ bool start_thread_obtaining_mutex(pthread_t *thread, pthread_mutex_t *mutex,int 
     // Allocate memory for the struct
     struct thread_data* threadInit = (struct thread_data *)malloc(sizeof(struct thread_data));
     if (threadInit!= NULL){
-        printf("Memory allocated for the struct data\n");
+        printf("Memory allocated for the struct data.\n");
     }
     else{
         printf("Failed to allocate memory\n");
