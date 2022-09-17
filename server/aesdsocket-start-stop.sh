@@ -4,7 +4,7 @@
 case "$1" in
     start)
         echo "Starting simpelserver"
-        start-stop-daemon -S -n aesdsocket -a /usr/bin/simpleserver
+        start-stop-daemon -S -n aesdsocket -a /usr/bin/aesdserver -- -d
         ;;
     stop)
         echo "Stopping simpleserver"
