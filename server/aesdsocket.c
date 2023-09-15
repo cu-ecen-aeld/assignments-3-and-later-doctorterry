@@ -19,7 +19,7 @@
 
 #define PORT "9000"
 #define MAXBUFLEN (256 * 1024U)
-#define BACKLOG 10 // Number of pending connections queue will hold
+#define BACKLOG 10 // Number of pending connections queue will hold.
 
 // Path and pointer to the log file.
 #define LOG_PATH "/var/tmp/aesdsocketdata"
