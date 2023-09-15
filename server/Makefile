@@ -1,24 +1,6 @@
-CC = $(CROSS_COMPILE)gcc
-
-CFLAGS= -O0 -g $(INCLUDE_DIRS) $(CDEFS)
-
-PRODUCT= aesdsocket
-
-CFILES= aesdsocket.c
-
-SRCS= ${CFILES}
-OBJS= ${CFILES:.c=.o}
-
-all:	${PRODUCT}
-
-writer:	aesdsocket.o
-	$(CC) $(CFLAGS) -o $@ aesdsocket.o $(LIBS)
-
+default:
+	${CROSS_COMPILE}gcc -pthread -Wall -o aesdsocket aesdsocket.c
+all:
+	${CROSS_COMPILE}gcc -pthread -Wall -o aesdsocket aesdsocket.c
 clean:
-	rm -f *.o 
-	rm -f ${PRODUCT}
-
-depend:
-
-.c.o:
-	$(CC) $(CFLAGS) -c $<
+	rm -rf aesdsocket
