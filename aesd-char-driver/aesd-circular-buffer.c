@@ -4,7 +4,7 @@
  *
  * @author Dan Walkes
  * @date 2020-03-01
- * @copyright Copyright (c) 2020
+ * @copyright Copyright (c) 2020.
  *
  */
 
