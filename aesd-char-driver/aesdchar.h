@@ -28,8 +28,11 @@ struct aesd_dev
     /**
      * TODO: Add structure(s) and locks needed to complete assignment requirements
      */
-    struct cdev cdev;     /* Char device structure      */
-};
+     struct aesd_circular_buffer circbuf;
+     struct command_buffer cmd;
+     struct mutex lock;
 
+     struct cdev cdev;     /* Char device structure      */
+};
 
 #endif /* AESD_CHAR_DRIVER_AESDCHAR_H_ */
