@@ -3,7 +3,7 @@
  * @brief Functions and data related to the AESD char driver implementation
  *
  * Based on the implementation of the "scull" device driver, found in
- * Linux Device Drivers example code.
+ * Linux Device Drivers example code.!
  *
  * @author Dan Walkes
  * @date 2019-10-22
