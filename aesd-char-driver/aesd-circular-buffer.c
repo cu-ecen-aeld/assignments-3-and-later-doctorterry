@@ -95,10 +95,12 @@ void aesd_circular_buffer_add_entry(struct aesd_circular_buffer *buffer, const s
     /**
     * TODO: implement per description
     */
+    const char *buffptr_rtn = NULL;
 
     // Check if the buffer is full
     if (buffer->full)
     {
+        buffptr_rtn = buffer->entry[buffer->out_offs].buffptr;
         // Advance out_offs to overwrite the oldest entry. Use modulo to ensure the operation does not increment 
         // beyond the buffer limit
         buffer->out_offs = (buffer->out_offs + 1) % AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;
@@ -110,7 +112,11 @@ void aesd_circular_buffer_add_entry(struct aesd_circular_buffer *buffer, const s
 
     // Update the full flag
     if(buffer->in_offs == buffer->out_offs)
+    {
         buffer->full = true;
+    }
+
+    return buffptr_rtn;
 }
 
 /**
