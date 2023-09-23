@@ -23,16 +23,27 @@
 #  define PDEBUG(fmt, args...) /* not debugging: nothing */
 #endif
 
+#include "aesd-circular-buffer.h"
+
+#define MAXCMDLEN   1024
+
+struct command_buffer
+{
+     char buf[MAXCMDLEN];
+     size_t size;
+};
+
 struct aesd_dev
 {
     /**
      * TODO: Add structure(s) and locks needed to complete assignment requirements
      */
-     struct aesd_circular_buffer circbuf;
-     struct command_buffer cmd;
-     struct mutex lock;
+    struct aesd_circular_buffer circbuf;
+    struct command_buffer cmd;
+    struct mutex lock;
 
-     struct cdev cdev;     /* Char device structure      */
+    struct cdev cdev;     /* Char device structure      */
 };
+
 
 #endif /* AESD_CHAR_DRIVER_AESDCHAR_H_ */
