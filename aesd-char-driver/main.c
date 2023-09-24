@@ -81,7 +81,9 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
     if (!s_entry_p)
     {
         ss_retval = 0;
-        goto out;
+        //goto out;
+        mutex_unlock(&(s_dev_p->lock));
+        return ss_retval;
     }
     PDEBUG("SUCCESS: Read %s", s_entry_p->buffptr);
     
@@ -89,14 +91,16 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
     if (copy_to_user(buf, &s_entry_p->buffptr[us_entry_offset], us_rcnt))
     {
         ss_retval = -EFAULT;
-        goto out;
+        //goto out;
+        mutex_unlock(&(s_dev_p->lock));
+        return ss_retval;
     }
     *f_pos += us_rcnt;
     ss_retval = us_rcnt;
 
-out:
-    mutex_unlock(&(s_dev_p->lock));
-    return ss_retval;
+//out:
+//    mutex_unlock(&(s_dev_p->lock));
+//    return ss_retval;
 }
 
 ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
@@ -123,7 +127,9 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     if (copy_from_user(&(s_cmd_p->buf[s_cmd_p->size]), buf, count))
     {
         ss_retval = -EFAULT;
-        goto out;
+        //goto out;
+        mutex_unlock(&(s_dev_p->lock));
+        return ss_retval;
     }
     s_cmd_p->size += count;
     PDEBUG("SUCCESS: Write CMD %zu %s", s_cmd_p->size, s_cmd_p->buf);
@@ -131,7 +137,9 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     if (s_cmd_p->buf[s_cmd_p->size - 1] != '\n')
     {
         ss_retval = count;
-        goto out;
+        //goto out;
+        mutex_unlock(&(s_dev_p->lock));
+        return ss_retval;
     }
 
     // Write to circular buffer
@@ -139,7 +147,9 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     if (!buffptr)
     {
         ss_retval = -ENOMEM;
-        goto out;
+        //goto out;
+        mutex_unlock(&(s_dev_p->lock));
+        return ss_retval;
     }
     memcpy(buffptr, s_cmd_p->buf, s_cmd_p->size);
     PDEBUG("SUCCESS: Write CMD %p", buffptr);
@@ -156,9 +166,9 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 
     ss_retval = count;
 
-out:
-    mutex_unlock(&(s_dev_p->lock));
-    return ss_retval;
+//out:
+//    mutex_unlock(&(s_dev_p->lock));
+//    return ss_retval;
 }
 
 struct file_operations aesd_fops = {
