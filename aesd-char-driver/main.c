@@ -78,27 +78,33 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
 
     // Read circular buffer
     s_entry_p = aesd_circular_buffer_find_entry_offset_for_fpos(&s_dev_p->circbuf, *f_pos, &us_entry_offset);
+    
+    // Check if data in the buffer
     if (!s_entry_p)
     {
         ss_retval = 0;
-        //goto out;
+
+        // Unlock the device (release the mutex)
         mutex_unlock(&(s_dev_p->lock));
+        
         return ss_retval;
     }
     PDEBUG("SUCCESS: Read %s", s_entry_p->buffptr);
     
+    // Begin copy to buf
     us_rcnt = s_entry_p->size - us_entry_offset;
+    
+    // Check if there are bytes of data that were not copied over. On success should be zero.
     if (copy_to_user(buf, &s_entry_p->buffptr[us_entry_offset], us_rcnt))
     {
         ss_retval = -EFAULT;
-        //goto out;
         mutex_unlock(&(s_dev_p->lock));
         return ss_retval;
     }
     *f_pos += us_rcnt;
     ss_retval = us_rcnt;
 
-//out:
+    // Unlock the device (release the mutex)
     mutex_unlock(&(s_dev_p->lock));
     return ss_retval;
 }
@@ -127,8 +133,10 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     if (copy_from_user(&(s_cmd_p->buf[s_cmd_p->size]), buf, count))
     {
         ss_retval = -EFAULT;
-        //goto out;
+        
+        // Unlock the device (release the mutex)
         mutex_unlock(&(s_dev_p->lock));
+        
         return ss_retval;
     }
     s_cmd_p->size += count;
@@ -137,8 +145,10 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     if (s_cmd_p->buf[s_cmd_p->size - 1] != '\n')
     {
         ss_retval = count;
-        //goto out;
+
+        // Unlock the device (release the mutex)
         mutex_unlock(&(s_dev_p->lock));
+        
         return ss_retval;
     }
 
@@ -147,10 +157,13 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     if (!buffptr)
     {
         ss_retval = -ENOMEM;
-        //goto out;
+
+        // Unlock the device (release the mutex)
         mutex_unlock(&(s_dev_p->lock));
+        
         return ss_retval;
     }
+
     memcpy(buffptr, s_cmd_p->buf, s_cmd_p->size);
     PDEBUG("SUCCESS: Write CMD %p", buffptr);
     s_entry.buffptr = buffptr;
@@ -166,7 +179,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 
     ss_retval = count;
 
-//out:
+    // Unlock the device (release the mutex)
     mutex_unlock(&(s_dev_p->lock));
     return ss_retval;
 }

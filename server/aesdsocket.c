@@ -29,7 +29,6 @@
 #else
 #define LOG_PATH "/var/tmp/aesdsocketdata"
 #endif
-//FILE *fp;
 
 // Global boolean for SIGINT and SIGTERM
 bool caughtsig = false;
@@ -189,7 +188,6 @@ static void *serve_thread(void *arg)
 					perror("ERROR: Unable to Close Log File");
 				}
 			}
-			//rewind(fp);
 
 			// Send the same data in return
 			if ((fp = fopen(LOG_PATH, "r")) == NULL)
@@ -265,7 +263,6 @@ int main(int argc, char *argv[])
 	struct addrinfo hints, *servinfo;
 	struct sigaction sigact;
 	struct sockaddr laddr;
-	//socklen_t laddrsz;
 	socklen_t addr_size;
 	pthread_t thread;
 	pid_t pid;
@@ -372,14 +369,6 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	// Open the log file to write
-	//if ((fp = fopen(LOG_PATH, "w+")) == NULL)
-	//{
-	//	printf ("ERROR: Open Log\n");
-	//	syslog(LOG_ERR, "ERROR: Open Log");
-	//	return -1;
-	//}
-
 	// Configure timer thread
 #if !USE_AESD_CHAR_DEVICE
 	memset(&sev, 0, sizeof(sev));
@@ -482,14 +471,6 @@ int main(int argc, char *argv[])
 		rv = -1;
 	}
 #endif
-
-	// Close the pointer used to write to the log file
-	//if (fclose(fp) == EOF)
-	//{
-	//	printf ("ERROR: Cleanup File Close\n");
-	//	syslog(LOG_ERR, "ERROR: Cleanup File Close\n");
-	//	rv = -1;
-	//}
 
 	// Destroy the mutex
 	if (pthread_mutex_destroy(&log_lock) != 0)
