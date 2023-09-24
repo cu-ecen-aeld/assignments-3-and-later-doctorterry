@@ -350,12 +350,12 @@ int main(int argc, char *argv[])
 	}
 
 	// Open the log file to write
-	if ((fp = fopen(LOG_PATH, "w+")) == NULL)
-	{
-		printf ("ERROR: Open Log\n");
-		syslog(LOG_ERR, "ERROR: Open Log");
-		return -1;
-	}
+	//if ((fp = fopen(LOG_PATH, "w+")) == NULL)
+	//{
+	//	printf ("ERROR: Open Log\n");
+	//	syslog(LOG_ERR, "ERROR: Open Log");
+	//	return -1;
+	//}
 
 	// Configure timer thread
 #if !USE_AESD_CHAR_DEVICE
