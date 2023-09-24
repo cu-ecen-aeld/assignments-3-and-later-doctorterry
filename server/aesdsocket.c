@@ -173,19 +173,42 @@ static void *serve_thread(void *arg)
 			}
 
 			// Write to log file
-			if (fprintf(fp, "%s", recvbuf) < 0)
+			if ((fp = fopen(LOG_PATH, "a")) == NULL)
 			{
-				printf("ERROR: Data Write to Log File\n");
-				syslog(LOG_ERR, "ERROR: Data Write to Log File");
+				perror("ERROR: Unable to Open Log Path");
 			}
-			rewind(fp);
+			else
+			{
+				if (fprintf(fp, "%s", recvbuf) < 0)
+				{
+					printf("ERROR: Data Write to Log File\n");
+					syslog(LOG_ERR, "ERROR: Data Write to Log File");
+				}
+				if (fclose(fp) == EOF)
+				{
+					perror("ERROR: Unable to Close Log File");
+				}
+			}
+			//rewind(fp);
 
 			// Send the same data in return
-			while((sendbuflen = fread(sendbuf, sizeof(char), MAXBUFLEN, fp)) > 0) {
-				if (send(targs->listenfd, sendbuf, sendbuflen, 0) == -1)
+			if ((fp = fopen(LOG_PATH, "r")) == NULL)
+			{
+				perror("ERROR: Unable to Open Log Path");
+			}
+			else
+			{
+				while((sendbuflen = fread(sendbuf, sizeof(char), MAXBUFLEN, fp)) > 0) 
 				{
-					printf("ERROR: Data Send\n");
-					syslog(LOG_ERR, "ERROR: Data Send");
+					if (send(targs->listenfd, sendbuf, sendbuflen, 0) == -1)
+					{
+						printf("ERROR: Data Send\n");
+						syslog(LOG_ERR, "ERROR: Data Send");
+					}
+				}
+				if (fclose(fp) == EOF)
+				{
+					perror("ERROR: Unable to Close Log File");
 				}
 			}
 
