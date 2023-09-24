@@ -451,12 +451,12 @@ int main(int argc, char *argv[])
 #endif
 
 	// Close the pointer used to write to the log file
-	if (fclose(fp) == EOF)
-	{
-		printf ("ERROR: Cleanup File Close\n");
-		syslog(LOG_ERR, "ERROR: Cleanup File Close\n");
-		rv = -1;
-	}
+	//if (fclose(fp) == EOF)
+	//{
+	//	printf ("ERROR: Cleanup File Close\n");
+	//	syslog(LOG_ERR, "ERROR: Cleanup File Close\n");
+	//	rv = -1;
+	//}
 
 	// Destroy the mutex
 	if (pthread_mutex_destroy(&log_lock) != 0)
