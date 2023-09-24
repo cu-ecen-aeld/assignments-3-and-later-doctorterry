@@ -99,8 +99,8 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
     ss_retval = us_rcnt;
 
 //out:
-//    mutex_unlock(&(s_dev_p->lock));
-//    return ss_retval;
+    mutex_unlock(&(s_dev_p->lock));
+    return ss_retval;
 }
 
 ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
@@ -167,8 +167,8 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     ss_retval = count;
 
 //out:
-//    mutex_unlock(&(s_dev_p->lock));
-//    return ss_retval;
+    mutex_unlock(&(s_dev_p->lock));
+    return ss_retval;
 }
 
 struct file_operations aesd_fops = {
