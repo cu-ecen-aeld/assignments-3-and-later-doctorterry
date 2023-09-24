@@ -72,6 +72,7 @@ static void time_thread(union sigval sv)
 	char outstr[256];
 	time_t t;
 	struct tm *time_info;
+	FILE *fp;
 	t = time(NULL);
 
 	// Get the local time
@@ -116,6 +117,7 @@ static void *serve_thread(void *arg)
 	int rv;
 	size_t sendbuflen;
 	thread_args_t *targs = arg;
+	FILE *fp;
 
 	targs->rv = 0;
 	// Convert binary format address of client to characters and store in the address buffer
