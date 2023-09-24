@@ -29,7 +29,7 @@
 #else
 #define LOG_PATH "/var/tmp/aesdsocketdata"
 #endif
-FILE *fp;
+//FILE *fp;
 
 // Global boolean for SIGINT and SIGTERM
 bool caughtsig = false;
@@ -97,8 +97,18 @@ static void time_thread(union sigval sv)
 	}
 
 	// Write timestampt to LOG FILE using global pointer.
-	fprintf(fp, "timestamp:%s\n", outstr);
-
+	if ((fp = fopen(LOG_PATH, "a")) == NULL)
+	{
+		perror("ERROR: Unable to Open Log Path");
+	}
+	else
+	{
+		fprintf(fp, "timestamp:%s\n", outstr);
+		if (fclose(fp) == EOF)
+		{
+			perror("ERROR: Unable to Close Log File");
+		}
+	}
 	// Release the mutex lock.
 	if (pthread_mutex_unlock(&log_lock) != 0)
 	{
@@ -232,7 +242,7 @@ int main(int argc, char *argv[])
 	struct addrinfo hints, *servinfo;
 	struct sigaction sigact;
 	struct sockaddr laddr;
-	socklen_t laddrsz;
+	//socklen_t laddrsz;
 	socklen_t addr_size;
 	pthread_t thread;
 	pid_t pid;
