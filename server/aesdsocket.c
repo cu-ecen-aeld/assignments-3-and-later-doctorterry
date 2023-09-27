@@ -16,6 +16,7 @@
 #include <sys/resource.h>
 #include <pthread.h>
 #include "queue.h"
+#include "../aesd-char-driver/aesd_ioctl.h"
 
 #define USE_AESD_CHAR_DEVICE (1)
 

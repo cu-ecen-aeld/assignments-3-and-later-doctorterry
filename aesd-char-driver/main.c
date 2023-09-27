@@ -20,6 +20,7 @@
 #include <linux/slab.h>
 #include <linux/types.h>
 #include "aesdchar.h"
+#include "aesd_ioctl.h"
 int aesd_major = 0; // use dynamic major
 int aesd_minor = 0;
 
@@ -54,6 +55,27 @@ int aesd_release(struct inode *inode, struct file *filp)
      */
 
     return 0;
+}
+
+loff_t aesd_llseek(struct file *filp, loff_t off, int whence)
+{
+    struct aesd_dev *s_dev_p = filp->private_data;
+    loff_t off_ret;
+    loff_t size;
+
+    PDEBUG("llseek");
+
+    if (mutex_lock_interruptible(&(s_dev_p->lock)))
+    {
+        return -ERESTARTSYS;
+    }
+
+    size = aesd_circular_buffer_get_size(&(s_dev_p->circbuf));
+    off_ret = fixed_size_llseek(filp, off, whence, size);
+
+    mutex_unlock(&(s_dev_p->lock));
+
+    return off_ret;
 }
 
 ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
