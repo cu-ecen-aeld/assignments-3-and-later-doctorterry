@@ -125,7 +125,7 @@ int parse_cmd(char *buf, size_t buflen, struct aesd_seekto *seekto)
 	cmd = malloc(buflen);
 	if (!cmd)
 	{
-		return -ENOMEM;
+		return -1;
 	}
 	memcpy(cmd, buf, buflen);
 
@@ -134,12 +134,14 @@ int parse_cmd(char *buf, size_t buflen, struct aesd_seekto *seekto)
 	if (!cmd)
 	{
 		free(cmd);
-		return -EINVAL;
+		return -1;
 	}
+
+	// Compare the strings. A false match will return a non-zero value
 	if (strcmp(cmd, "AESDCHAR_IOCSEEKTO"))
 	{
 		free(cmd);
-		return -EINVAL;
+		return -1;
 	}
 
 	arg1 = strtok(NULL, ",");
@@ -147,20 +149,20 @@ int parse_cmd(char *buf, size_t buflen, struct aesd_seekto *seekto)
 	if (arg1 == NULL || arg2 == NULL)
 	{
 		free(cmd);
-		return -EINVAL;
+		return -1;
 	}
 
 	seekto->write_cmd = strtoul(arg1, NULL, 10);
 	if (seekto->write_cmd == 0 && errno == EINVAL)
 	{
 		free(cmd);
-		return -EINVAL;
+		return -1;
 	}
 	seekto->write_cmd_offset = strtoul(arg2, NULL, 10);
 	if (seekto->write_cmd_offset == 0 && errno == EINVAL)
 	{
 		free(cmd);
-		return -EINVAL;
+		return -1;
 	}
 
 	free(cmd);
@@ -219,26 +221,6 @@ static void *serve_thread(void *arg)
 				printf("ERROR: Mutex Lock to Write Data From Receive Buffer to Log File\n");
 				syslog(LOG_ERR, "ERROR: Mutex Lock to Write Data From Receive Buffer to Log File");
 			}
-
-			/*
-			// Write to log file
-			if ((fp = fopen(LOG_PATH, "a")) == NULL)
-			{
-				perror("ERROR: Unable to Open Log Path");
-			}
-			else
-			{
-				if (fprintf(fp, "%s", recvbuf) < 0)
-				{
-					printf("ERROR: Data Write to Log File\n");
-					syslog(LOG_ERR, "ERROR: Data Write to Log File");
-				}
-				if (fclose(fp) == EOF)
-				{
-					perror("ERROR: Unable to Close Log File");
-				}
-			}
-			*/
 
 			if (parse_cmd(recvbuf, rv, &seekto) == 0)
 			{
@@ -308,8 +290,6 @@ static void *serve_thread(void *arg)
 					}
 				}
 			}
-
-
 
 			// Release the mutex lock of the log file
 			if (pthread_mutex_unlock(&log_lock) != 0)
