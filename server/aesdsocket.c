@@ -118,6 +118,54 @@ static void time_thread(union sigval sv)
 }
 #endif
 
+int parse_cmd(char *buf, size_t buflen, struct aesd_seekto *seekto)
+{
+	char *cmd, *arg1, *arg2;
+
+	cmd = malloc(buflen);
+	if (!cmd)
+	{
+		return -ENOMEM;
+	}
+	memcpy(cmd, buf, buflen);
+
+	cmd[strcspn(cmd, "\n")] = '\0';
+	cmd = strtok(cmd, ":");
+	if (!cmd)
+	{
+		free(cmd);
+		return -EINVAL;
+	}
+	if (strcmp(cmd, "AESDCHAR_IOCSEEKTO"))
+	{
+		free(cmd);
+		return -EINVAL;
+	}
+
+	arg1 = strtok(NULL, ",");
+	arg2 = strtok(NULL, "");
+	if (arg1 == NULL || arg2 == NULL)
+	{
+		free(cmd);
+		return -EINVAL;
+	}
+
+	seekto->write_cmd = strtoul(arg1, NULL, 10);
+	if (seekto->write_cmd == 0 && errno == EINVAL)
+	{
+		free(cmd);
+		return -EINVAL;
+	}
+	seekto->write_cmd_offset = strtoul(arg2, NULL, 10);
+	if (seekto->write_cmd_offset == 0 && errno == EINVAL)
+	{
+		free(cmd);
+		return -EINVAL;
+	}
+
+	free(cmd);
+	return 0;
+}
 
 // This function will be used for the data receive and send thread
 static void *serve_thread(void *arg)
@@ -172,6 +220,7 @@ static void *serve_thread(void *arg)
 				syslog(LOG_ERR, "ERROR: Mutex Lock to Write Data From Receive Buffer to Log File");
 			}
 
+
 			// Write to log file
 			if ((fp = fopen(LOG_PATH, "a")) == NULL)
 			{
@@ -190,26 +239,76 @@ static void *serve_thread(void *arg)
 				}
 			}
 
-			// Send the same data in return
-			if ((fp = fopen(LOG_PATH, "r")) == NULL)
+			if (parse_cmd(recvbuf, rv, &seekto) == 0)
 			{
-				perror("ERROR: Unable to Open Log Path");
-			}
-			else
-			{
-				while((sendbuflen = fread(sendbuf, sizeof(char), MAXBUFLEN, fp)) > 0) 
+
+				// Send the same data in return
+				if ((fp = fopen(LOG_PATH, "r")) == NULL)
 				{
-					if (send(targs->listenfd, sendbuf, sendbuflen, 0) == -1)
+					perror("ERROR: Unable to Open Log Path");
+				}
+				else
+				{
+					if (ioctl(fileno(fp), AESDCHAR_IOCSEEKTO, &seekto) == 0)
 					{
-						printf("ERROR: Data Send\n");
-						syslog(LOG_ERR, "ERROR: Data Send");
+						while((sendbuflen = fread(sendbuf, sizeof(char), MAXBUFLEN, fp)) > 0) 
+						{
+							if (send(targs->listenfd, sendbuf, sendbuflen, 0) == -1)
+							{
+								printf("ERROR: Data Send\n");
+								syslog(LOG_ERR, "ERROR: Data Send");
+							}
+						}
+						if (fclose(fp) == EOF)
+						{
+							perror("ERROR: Unable to Close Log File");
+						}
+					}
+					else
+					{
+						perror("aesdsocket: ioctl");
 					}
 				}
-				if (fclose(fp) == EOF)
+			}
+
+			else
+			{
+				if ((fp = fopen(LOG_PATH, "a")) == NULL)
 				{
-					perror("ERROR: Unable to Close Log File");
+					perror("aesdsocket: fopen");
+				}
+				else
+				{
+					if (fprintf(fp, "%s", recvbuf) < 0)
+					{
+						fprintf(stderr, "aesdsocket: fprintf");
+					}
+					if (fclose(fp) == EOF)
+					{
+						perror("aesdsocket: fclose");
+					}
+				}
+				if ((fp = fopen(LOG_PATH, "r")) == NULL)
+				{
+					perror("aesdsocket: fopen");
+				}
+				else
+				{
+					while ((sendbuflen = fread(sendbuf, sizeof(char), MAXBUFLEN, fp)) > 0)
+					{
+						if (send(targs->listenfd, sendbuf, sendbuflen, 0) == -1)
+						{
+							perror("aesdsock: send");
+						}
+					}
+					if (fclose(fp) == EOF)
+					{
+						perror("aesdsocket: fclose");
+					}
 				}
 			}
+
+
 
 			// Release the mutex lock of the log file
 			if (pthread_mutex_unlock(&log_lock) != 0)
