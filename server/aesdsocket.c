@@ -176,6 +176,7 @@ static void *serve_thread(void *arg)
 	size_t sendbuflen;
 	thread_args_t *targs = arg;
 	FILE *fp;
+	struct aesd_seekto seekto;
 
 	targs->rv = 0;
 	// Convert binary format address of client to characters and store in the address buffer
