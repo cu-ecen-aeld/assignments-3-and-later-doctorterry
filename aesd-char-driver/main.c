@@ -264,7 +264,7 @@ static long aesd_adjust_file_offset(struct file *filp, unsigned int write_cmd, u
 
     mutex_unlock(&(s_dev_p->lock));
 
-    PDEBUG("aesd_adjust_file_offset: fpos: %lld", filp->f_pos);
+    PDEBUG("MAIN.c: adjust_file_offset: fpos: %lld", filp->f_pos);
 
     return retval;
 }
@@ -274,7 +274,7 @@ long aesd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
     int retval = -ENOTTY;
     struct aesd_seekto seekto;
 
-    PDEBUG("ioctl");
+    PDEBUG("MAIN.c: ioctl");
 
     switch (cmd)
     {
@@ -285,7 +285,7 @@ long aesd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
         }
         else
         {
-            PDEBUG("aesd_ioctl: AESDCHAR_IOCSEEKTO:%d,%d", seekto.write_cmd, seekto.write_cmd_offset);
+            PDEBUG("MAIN.c: ioctl AESDCHAR_IOCSEEKTO:%d,%d", seekto.write_cmd, seekto.write_cmd_offset);
             retval = aesd_adjust_file_offset(filp, seekto.write_cmd, seekto.write_cmd_offset);
         }
         break;
@@ -325,8 +325,7 @@ int aesd_init_module(void)
 {
     dev_t dev = 0;
     int result;
-    result = alloc_chrdev_region(&dev, aesd_minor, 1,
-                                 "aesdchar");
+    result = alloc_chrdev_region(&dev, aesd_minor, 1, "aesdchar");
     aesd_major = MAJOR(dev);
     if (result < 0)
     {
@@ -367,7 +366,7 @@ void aesd_cleanup_module(void)
     {
         if (entryptr->buffptr)
         {
-            PDEBUG("aesd_cleanup_module: Releasing cmd @ index %d @ address %p", index, entryptr->buffptr);
+            PDEBUG("MAIN.c: Cleanup module releasing CMD @ index %d @ address %p", index, entryptr->buffptr);
             kfree(entryptr->buffptr);
         }
     }

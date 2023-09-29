@@ -227,13 +227,15 @@ static void *serve_thread(void *arg)
 			if (parse_cmd(recvbuf, rv, &seekto) == 0)
 			{
 
-				// Send the same data in return
+				// Open the log path to read
 				if ((fp = fopen(LOG_PATH, "r")) == NULL)
 				{
-					perror("ERROR: Unable to Open Log Path");
+					printf("ERROR: Unable to Open Log Path\n");
+					syslog(LOG_ERR, "ERROR: Unable to Open Log Path");
 				}
 				else
 				{
+					// The IOCTL function requires that the file pointer be converted to an int
 					fd = fileno(fp);
 					if (ioctl(fd, AESDCHAR_IOCSEEKTO, &seekto) == 0)
 					{
@@ -247,36 +249,45 @@ static void *serve_thread(void *arg)
 						}
 						if (fclose(fp) == EOF)
 						{
-							perror("ERROR: Unable to Close Log File");
+							printf("ERROR: Unable to Close Log File\n");
+							syslog(LOG_ERR, "ERROR: Unable to Close Log File");
 						}
 					}
 					else
 					{
-						perror("aesdsocket: ioctl");
+						printf("ERROR: IOCTL\n");
+						syslog(LOG_ERR, "ERROR: IOCTL");
 					}
 				}
 			}
 
 			else
 			{
+				// Append to log
 				if ((fp = fopen(LOG_PATH, "a")) == NULL)
 				{
-					perror("aesdsocket: fopen");
+					printf("ERROR: Unable to Open Log Path\n");
+					syslog(LOG_ERR, "ERROR: Unable to Open Log Path");
 				}
 				else
 				{
 					if (fprintf(fp, "%s", recvbuf) < 0)
 					{
-						fprintf(stderr, "aesdsocket: fprintf");
+						printf("ERROR: fprintf\n");
+						syslog(LOG_ERR, "ERROR: fprintf");
 					}
 					if (fclose(fp) == EOF)
 					{
-						perror("aesdsocket: fclose");
+						printf("ERROR: fclose\n");
+						syslog(LOG_ERR, "ERROR: fclose");
 					}
 				}
+
+				// Read log
 				if ((fp = fopen(LOG_PATH, "r")) == NULL)
 				{
-					perror("aesdsocket: fopen");
+					printf("ERROR: Unable to Open Log Path\n");
+					syslog(LOG_ERR, "ERROR: Unable to Open Log Path");
 				}
 				else
 				{
@@ -284,12 +295,14 @@ static void *serve_thread(void *arg)
 					{
 						if (send(targs->listenfd, sendbuf, sendbuflen, 0) == -1)
 						{
-							perror("aesdsock: send");
+							printf("ERROR: Data Send\n");
+							syslog(LOG_ERR, "ERROR: Data Send");
 						}
 					}
 					if (fclose(fp) == EOF)
 					{
-						perror("aesdsocket: fclose");
+						printf("ERROR: fclose\n");
+						syslog(LOG_ERR, "ERROR: fclose");
 					}
 				}
 			}
