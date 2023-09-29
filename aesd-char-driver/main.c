@@ -11,309 +11,337 @@
  *
  */
 
-//#include <linux/module.h>
-//#include <linux/init.h>
-//#include <linux/printk.h>
-//#include <linux/types.h>
-//#include <linux/cdev.h>
-//#include <linux/fs.h> // file_operations
-//#include <linux/slab.h>
-//#include <linux/types.h>
 #include "aesdchar.h"
-#include "aesd_ioctl.h"
+
+#define FALSE 0
+#define TRUE 1
 
 int aesd_major = 0; // use dynamic major
 int aesd_minor = 0;
 
-MODULE_AUTHOR("doctorterry"); /** TODO: fill in your name **/
+MODULE_AUTHOR("Piistachyoo");
 MODULE_LICENSE("Dual BSD/GPL");
 
+loff_t offset_backup = 0;
+uint8_t ioctl_called = 0;
 struct aesd_dev aesd_device;
-
-int aesd_open(struct inode *inode, struct file *filp)
-{
-    struct aesd_dev *dev; /* device information */
-
+struct class *aesd_class;
+struct device *aesd_device_node;
+int aesd_open(struct inode *inode, struct file *filp) {
+    struct aesd_dev *ptr_aesd_dev;
     PDEBUG("open");
     /**
      * TODO: handle open
      */
-    dev = container_of(inode->i_cdev, struct aesd_dev, cdev);
-    filp->private_data = dev;
+    ptr_aesd_dev = container_of(inode->i_cdev, struct aesd_dev, cdev);
+    filp->private_data = ptr_aesd_dev;
+    if (ioctl_called) {
+        ioctl_called = 0;
+        filp->f_pos = offset_backup;
+    }
 
+    PDEBUG("filp->f_offs = %lld\n", filp->f_pos);
     return 0;
 }
 
-int aesd_release(struct inode *inode, struct file *filp)
-{
+int aesd_release(struct inode *inode, struct file *filp) {
     PDEBUG("release");
+    PDEBUG("filp->f_offs = %lld\n", filp->f_pos);
+    // offset_backup = filp->f_pos;
     /**
      * TODO: handle release
      */
-
     return 0;
 }
 
-loff_t aesd_llseek(struct file *filp, loff_t off, int whence)
-{
-    struct aesd_dev *s_dev_p = filp->private_data;
-    loff_t off_ret;
-    loff_t size;
-
-    PDEBUG("llseek");
-
-    if (mutex_lock_interruptible(&(s_dev_p->lock)))
-    {
-        return -ERESTARTSYS;
-    }
-
-    size = aesd_circular_buffer_get_size(&(s_dev_p->circbuf));
-    off_ret = fixed_size_llseek(filp, off, whence, size);
-
-    mutex_unlock(&(s_dev_p->lock));
-
-    return off_ret;
-}
-
 ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
-                  loff_t *f_pos)
-{
-    ssize_t ss_retval = 0;
-    struct aesd_dev *s_dev_p = filp->private_data;
-    struct aesd_buffer_entry *s_entry_p;
-    size_t us_entry_offset;
-    size_t us_rcnt;
-
-    PDEBUG("read %zu bytes with offset %lld", count, *f_pos);
+                  loff_t *f_pos) {
+    ssize_t retval = 0;
+    ssize_t offset;
+    struct aesd_buffer_entry *ret_entry = 0;
+    struct aesd_dev *dev = (struct aesd_dev *)filp->private_data;
+    PDEBUG("read %zu bytes with offset %lld\n", count, *f_pos);
+    PDEBUG("filp->f_offs = %lld\n", filp->f_pos);
     /**
      * TODO: handle read
      */
-    if (mutex_lock_interruptible(&(s_dev_p->lock)))
-    {
-        return -ERESTARTSYS;
+    if (mutex_lock_interruptible(&(dev->lock))) {
+        PDEBUG("ERROR: Couldn't acquire lock\n");
+        retval = -ERESTARTSYS;
+        goto inCaseOfFailure;
     }
-    s_entry_p = aesd_circular_buffer_find_entry_offset_for_fpos(&(s_dev_p->circbuf), *f_pos, &us_entry_offset);
-    if (!s_entry_p)
-    {
-        ss_retval = 0;
-        goto out;
-    }
-    PDEBUG("aesd_read: %s", s_entry_p->buffptr);
-    us_rcnt = s_entry_p->size - us_entry_offset;
-    if (copy_to_user(buf, &s_entry_p->buffptr[us_entry_offset], us_rcnt))
-    {
-        ss_retval = -EFAULT;
-        goto out;
-    }
-    *f_pos += us_rcnt;
-    ss_retval = us_rcnt;
 
-out:
-    mutex_unlock(&(s_dev_p->lock));
-    return ss_retval;
+    ret_entry = aesd_circular_buffer_find_entry_offset_for_fpos(
+        &(dev->buffer), *f_pos, &offset);
+    PDEBUG("offset return = %ld\n", offset);
+    if (ret_entry == NULL) {
+        PDEBUG("Not enough data written!\n");
+        retval = 0;
+        goto inCaseOfFailure;
+    }
+    retval = ret_entry->size - offset;
+    if (copy_to_user(buf, (void *)(ret_entry->buffptr + offset), retval)) {
+        PDEBUG("Error copying data to user buffer\n");
+        retval = -EFAULT;
+        goto inCaseOfFailure;
+    } else {
+        *f_pos += retval;
+    }
+
+    PDEBUG("Data copied: %s", ret_entry->buffptr + offset);
+    PDEBUG("new offset: %lld\n", *f_pos);
+    PDEBUG("retval: %ld\n", retval);
+    PDEBUG("-------------------------------\n");
+
+inCaseOfFailure:
+    mutex_unlock(&(dev->lock));
+    return retval;
 }
 
 ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
-                   loff_t *f_pos)
-{
-    ssize_t ss_retval = -EFAULT;
-    struct aesd_dev *s_dev_p = filp->private_data;
-    struct command_buffer *s_cmd_p = &(s_dev_p->cmd);
-    struct aesd_buffer_entry s_entry;
-    char *buffptr;
-    const char *u8_buffptr_rtn_p;
-
+                   loff_t *f_pos) {
+    ssize_t retval = -ENOMEM;
+    struct aesd_dev *dev = (struct aesd_dev *)filp->private_data;
     PDEBUG("write %zu bytes with offset %lld", count, *f_pos);
     /**
      * TODO: handle write
      */
-    if (mutex_lock_interruptible(&(s_dev_p->lock)))
-    {
+    if (mutex_lock_interruptible(&(dev->lock))) {
+        PDEBUG("ERROR: Couldn't acquire lock\n");
+        retval = -ERESTARTSYS;
+        goto inCaseOfFailure;
+    }
+
+    dev->data_buffer.buffptr = krealloc(
+        dev->data_buffer.buffptr, dev->data_buffer.size + count, GFP_KERNEL);
+    if (dev->data_buffer.buffptr == NULL) {
+        PDEBUG("Error allocating memory!\n");
+        retval = -ENOMEM;
+        goto inCaseOfFailure;
+    }
+
+    /* Copy data from user space to kernel space */
+    if (copy_from_user(
+            (char *)(dev->data_buffer.buffptr + dev->data_buffer.size), buf,
+            count)) {
+        PDEBUG("Error copying data from user buffer\n");
+        retval = -EFAULT;
+        goto inCaseOfFailure;
+    }
+    retval = count;
+    dev->data_buffer.size += count;
+    *f_pos = *f_pos + retval;
+
+    /* Check if it was ended with endline or not */
+    if (dev->data_buffer.buffptr[dev->data_buffer.size - 1] != '\n') {
+        PDEBUG("WARNING: Buffer has no end line\n");
+        PDEBUG("Skipping data entry\n");
+    } else {
+        PDEBUG("Data in buffer: %s", dev->data_buffer.buffptr);
+        PDEBUG("Size of buffer: %zu\n", dev->data_buffer.size);
+        aesd_circular_buffer_add_entry(&(dev->buffer), &(dev->data_buffer));
+        PDEBUG("Entry added\n");
+        dev->data_buffer.size = 0;
+        dev->data_buffer.buffptr = NULL;
+    }
+
+    PDEBUG("-------------------------------\n");
+
+inCaseOfFailure:
+    mutex_unlock(&(dev->lock));
+    return retval;
+}
+
+loff_t aesd_llseek(struct file *filp, loff_t f_offs, int whence) {
+    uint8_t index;
+    struct aesd_dev *dev = filp->private_data;
+    loff_t retval;
+    loff_t buffer_size = 0;
+
+    if (mutex_lock_interruptible(&(dev->lock)))
         return -ERESTARTSYS;
+
+    switch (whence) {
+    case SEEK_SET: // Use specified offset as file position
+        retval = f_offs;
+        PDEBUG("Used SEEK_SET to set the offset to %lld\n", retval);
+        break;
+
+    case SEEK_CUR: // Increment or decrement file position
+        retval = filp->f_pos + f_offs;
+        PDEBUG("Used SEEK_CUR to set the offset to %lld\n", retval);
+        break;
+
+    case SEEK_END: // Use EOF as file position
+        for (index = 0; index < AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;
+             index++) {
+            if (dev->buffer.entry[index].buffptr) {
+                buffer_size += dev->buffer.entry[index].size;
+            }
+        }
+        retval = buffer_size + f_offs;
+        PDEBUG("Used SEEK_END to set the offset to %lld\n", retval);
+        break;
+
+    default:
+        retval = -EINVAL;
+        goto inCaseOfFailure;
     }
 
-    if (copy_from_user(&(s_cmd_p->buf[s_cmd_p->size]), buf, count))
-    {
-        ss_retval = -EFAULT;
-        goto out;
-    }
-    s_cmd_p->size += count;
-    PDEBUG("aesd_write: cmd write %zu %s", s_cmd_p->size, s_cmd_p->buf);
-
-    if (s_cmd_p->buf[s_cmd_p->size - 1] != '\n')
-    {
-        ss_retval = count;
-        *f_pos += count;
-        goto out;
+    if (retval < 0) {
+        PDEBUG("Invalid arguments, offset can't be set to %lld\n", retval);
+        retval = -EINVAL;
+        goto inCaseOfFailure;
     }
 
-    /* Write to circular buffer */
-    buffptr = kmalloc(s_cmd_p->size, GFP_KERNEL);
-    if (!buffptr)
-    {
-        ss_retval = -ENOMEM;
-        goto out;
-    }
-    memcpy(buffptr, s_cmd_p->buf, s_cmd_p->size);
-    PDEBUG("aesd_write: write cmd @ %p", buffptr);
-    s_entry.buffptr = buffptr;
-    s_entry.size = s_cmd_p->size;
-    u8_buffptr_rtn_p = aesd_circular_buffer_add_entry(&(s_dev_p->circbuf), &s_entry);
-    if (u8_buffptr_rtn_p)
-    {
-        PDEBUG("aesd_write: release cmd @ %p", u8_buffptr_rtn_p);
-        kfree(u8_buffptr_rtn_p);
-    }
-    PDEBUG("aesd_write: circbuf write %zu %s", s_entry.size, s_entry.buffptr);
-    s_cmd_p->size = 0;
+    filp->f_pos = retval;
 
-    ss_retval = count;
-    *f_pos += count;
-
-out:
-    mutex_unlock(&(s_dev_p->lock));
-    return ss_retval;
+inCaseOfFailure:
+    mutex_unlock(&(dev->lock));
+    return retval;
 }
 
 /**
- * Adjust the file offset (f_pos) parameter of @param filp based on the location specified by
+ * Adjust the file offset (f_pos) parameter of @param filp based on the location
+ * specified by
  * @param write_cmd (the zero referenced command to locate)
  * and @param write_cmd_offset (the zero referenced offset into the command)
  * @return 0 if successful, negative if error occured:
  *      -ERESTARTSYS if mutex could not be obtained
  *      -EINVAL if @param write_cmd or @param write_cmd_offset is out of range
  */
-static long aesd_adjust_file_offset(struct file *filp, unsigned int write_cmd, unsigned int write_cmd_offset)
-{
-    struct aesd_dev *s_dev_p = filp->private_data;
-    int retval = 0;
-    loff_t fpos;
+static long aesd_adjust_file_offset(struct file *filp, unsigned int write_cmd,
+                                    unsigned int write_cmd_offset) {
+    struct aesd_dev *dev = filp->private_data;
+    struct aesd_circular_buffer *buffer = &(dev->buffer);
+    uint8_t index;
+    long retval;
+    long new_offset = 0;
 
-    if (mutex_lock_interruptible(&(s_dev_p->lock)))
-    {
+    if (mutex_lock_interruptible(&(dev->lock))) {
         return -ERESTARTSYS;
     }
 
-    fpos = aesd_circular_buffer_get_fpos(&(s_dev_p->circbuf), write_cmd, write_cmd_offset);
-    if (fpos < 0)
-    {
+    /* Validate arguments */
+    if ((write_cmd >= AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED) ||
+        (buffer->entry[write_cmd].buffptr == NULL) ||
+        (buffer->entry[write_cmd].size <= write_cmd_offset)) {
         retval = -EINVAL;
-    }
-    else
-    {
-        filp->f_pos = fpos;
+        PDEBUG("Error: invalid argument\n");
+        goto inCaseOfFailure;
     }
 
-    mutex_unlock(&(s_dev_p->lock));
+    /* Set the offset to the demanded offset */
 
-    PDEBUG("aesd_adjust_file_offset: fpos: %lld", filp->f_pos);
+    /* Seek to the start of write_cmd entry */
+    for (index = 0; index < write_cmd; index++) {
+        new_offset += buffer->entry[index].size;
+    }
 
+    /* Add offset */
+    new_offset += write_cmd_offset;
+    filp->f_pos = new_offset;
+    offset_backup = filp->f_pos;
+    ioctl_called = 1;
+    retval = 0;
+    mutex_unlock(&(dev->lock));
+
+    PDEBUG("Your new f_pos is: %lld", filp->f_pos);
+inCaseOfFailure:
     return retval;
 }
 
-long aesd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
-{
-    int retval = -ENOTTY;
-    struct aesd_seekto seekto;
-
-    PDEBUG("ioctl");
-
-    switch (cmd)
-    {
+long aesd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg) {
+    long retval;
+    PDEBUG("********************************************\n");
+    PDEBUG("ioctl is called with command %u\n", cmd);
+    switch (cmd) {
     case AESDCHAR_IOCSEEKTO:
-        if (copy_from_user(&seekto, (const void __user *)arg, sizeof(seekto)) != 0)
-        {
+        struct aesd_seekto seekto;
+        if (copy_from_user(&seekto, (const void __user *)arg, sizeof(seekto))) {
+            PDEBUG("ioctl: Error copying data from user\n");
             retval = -EFAULT;
-        }
-        else
-        {
-            PDEBUG("aesd_ioctl: AESDCHAR_IOCSEEKTO:%d,%d", seekto.write_cmd, seekto.write_cmd_offset);
-            retval = aesd_adjust_file_offset(filp, seekto.write_cmd, seekto.write_cmd_offset);
+        } else {
+            PDEBUG("ioctl: Adjusting file offset to %u, %u\n", seekto.write_cmd,
+                   seekto.write_cmd_offset);
+            retval = aesd_adjust_file_offset(filp, seekto.write_cmd,
+                                             seekto.write_cmd_offset);
         }
         break;
     default:
-        retval = -ENOTTY;
+        PDEBUG("ioctl: Wrong command\n");
+        retval = -EINVAL;
     }
-
+    PDEBUG("********************************************\n");
     return retval;
 }
 
-struct file_operations aesd_fops = {
-    .owner = THIS_MODULE,
-    .llseek = aesd_llseek,
-    .read = aesd_read,
-    .write = aesd_write,
-    .unlocked_ioctl = aesd_ioctl,
-    .open = aesd_open,
-    .release = aesd_release,
-};
+struct file_operations aesd_fops = {.owner = THIS_MODULE,
+                                    .read = aesd_read,
+                                    .write = aesd_write,
+                                    .open = aesd_open,
+                                    .release = aesd_release,
+                                    .llseek = aesd_llseek,
+                                    .unlocked_ioctl = aesd_ioctl};
 
-static int aesd_setup_cdev(struct aesd_dev *dev)
-{
+static int aesd_setup_cdev(struct aesd_dev *dev) {
     int err, devno = MKDEV(aesd_major, aesd_minor);
 
     cdev_init(&dev->cdev, &aesd_fops);
     dev->cdev.owner = THIS_MODULE;
     dev->cdev.ops = &aesd_fops;
     err = cdev_add(&dev->cdev, devno, 1);
-    if (err)
-    {
-        printk(KERN_ERR "Error %d adding aesd cdev", err);
+    if (err) {
+        PDEBUG("Error %d adding aesd cdev", err);
     }
     return err;
 }
 
-int aesd_init_module(void)
-{
+int aesd_init_module(void) {
     dev_t dev = 0;
     int result;
-    result = alloc_chrdev_region(&dev, aesd_minor, 1,
-                                 "aesdchar");
+    result = alloc_chrdev_region(&dev, aesd_minor, 1, "aesdchar");
     aesd_major = MAJOR(dev);
-    if (result < 0)
-    {
-        printk(KERN_WARNING "Can't get major %d\n", aesd_major);
-        return result;
+    if (result < 0) {
+        // printk(KERN_WARNING "Can't get major %d\n", aesd_major);
+        PDEBUG("Can't get major %d\n", aesd_major);
+        goto deviceNumberFail;
     }
     memset(&aesd_device, 0, sizeof(struct aesd_dev));
 
-    /**
-     * TODO: initialize the AESD specific portion of the device
-     */
-    aesd_circular_buffer_init(&(aesd_device.circbuf));
-    aesd_device.cmd.size = 0;
-    mutex_init(&aesd_device.lock);
-
     result = aesd_setup_cdev(&aesd_device);
-    if (result)
-    {
-        unregister_chrdev_region(dev, 1);
+    if (result) {
+        goto cdevRegisterFail;
     }
 
+    aesd_circular_buffer_init(&aesd_device.buffer);
+
+    aesd_device.data_buffer.buffptr = kmalloc(0, GFP_KERNEL);
+    aesd_device.data_buffer.size = 0;
+
+    return 0;
+
+cdevRegisterFail:
+    unregister_chrdev_region(dev, 1);
+deviceNumberFail:
     return result;
 }
 
-void aesd_cleanup_module(void)
-{
+void aesd_cleanup_module(void) {
     uint8_t index;
-    struct aesd_buffer_entry *entryptr;
-
     dev_t devno = MKDEV(aesd_major, aesd_minor);
 
-    cdev_del(&aesd_device.cdev);
-
-    /**
-     * TODO: cleanup AESD specific poritions here as necessary
-     */
-    AESD_CIRCULAR_BUFFER_FOREACH(entryptr, &aesd_device.circbuf, index)
-    {
-        if (entryptr->buffptr)
-        {
-            PDEBUG("aesd_cleanup_module: Releasing cmd @ index %d @ address %p", index, entryptr->buffptr);
-            kfree(entryptr->buffptr);
+    for (index = 0; index < AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED; index++) {
+        if (aesd_device.buffer.entry[index].buffptr != NULL) {
+            kfree(aesd_device.buffer.entry[index].buffptr);
         }
     }
 
+    if (aesd_device.data_buffer.buffptr != NULL) {
+        kfree(aesd_device.data_buffer.buffptr);
+    }
+
+    cdev_del(&(aesd_device.cdev));
     unregister_chrdev_region(devno, 1);
 }
 
