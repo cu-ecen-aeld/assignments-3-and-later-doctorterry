@@ -66,7 +66,7 @@ loff_t aesd_llseek(struct file *filp, loff_t off, int whence)
 
     switch (whence) {
     case SEEK_SET: // Use specified offset as file position
-        retval = f_offs;
+        retval = off;
         PDEBUG("Used SEEK_SET to set the offset to %lld\n", retval);
         break;
 
@@ -79,7 +79,7 @@ loff_t aesd_llseek(struct file *filp, loff_t off, int whence)
         for (index = 0; index < AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;
              index++) {
             if (dev->circbuf.entry[index].buffptr) {
-                buffer_size += dev->circbuf.entry[index].size;
+                buffer_size += dev->circbuf.entry[index].size;git 
             }
         }
         retval = buffer_size + f_offs;
