@@ -101,7 +101,7 @@ loff_t aesd_llseek(struct file *filp, loff_t off, int whence)
     }
 
     if (retval < 0) {
-        PDEBUG("Invalid arguments, offset can't be set to %lld\n", retval);
+        PDEBUG("MAIN.c: Invalid arguments. Offset cannot be set to %lld\n", retval);
         retval = -EINVAL;
         mutex_unlock(&(dev->lock));
         return retval;
@@ -120,23 +120,36 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count, loff_t *f_p
     size_t us_entry_offset;
     size_t us_rcnt;
 
-    PDEBUG("read %zu bytes with offset %lld", count, *f_pos);
+    PDEBUG("MAIN.c: Read %zu bytes with offset %lld", count, *f_pos);
     /**
      * TODO: handle read
      */
+
+    // Check for interrupt
     if (mutex_lock_interruptible(&(s_dev_p->lock)))
     {
         return -ERESTARTSYS;
     }
+
+    // Read circular buffer
     s_entry_p = aesd_circular_buffer_find_entry_offset_for_fpos(&(s_dev_p->circbuf), *f_pos, &us_entry_offset);
+    
+    // Check if data in the buffer
     if (!s_entry_p)
     {
         ss_retval = 0;
+
+        // Unlock the device (release the mutex)
         mutex_unlock(&(s_dev_p->lock));
+
         return ss_retval;
     }
-    PDEBUG("aesd_read: %s", s_entry_p->buffptr);
+    PDEBUG("MAIN.c: SUCCESS read: %s", s_entry_p->buffptr);
+
+    // Begin copy to buf
     us_rcnt = s_entry_p->size - us_entry_offset;
+
+    // Check if there are bytes of data that were not copied over. On success should be zero.
     if (copy_to_user(buf, &s_entry_p->buffptr[us_entry_offset], us_rcnt))
     {
         ss_retval = -EFAULT;
@@ -145,6 +158,8 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count, loff_t *f_p
     }
     *f_pos += us_rcnt;
     ss_retval = us_rcnt;
+
+    // Unlock the device (release the mutex)
     mutex_unlock(&(s_dev_p->lock));
     return ss_retval;
 }
@@ -163,11 +178,14 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     /**
      * TODO: handle write
      */
+
+    // Check for interrupt
     if (mutex_lock_interruptible(&(s_dev_p->lock)))
     {
         return -ERESTARTSYS;
     }
 
+    // Copy from user space
     if (copy_from_user(&(s_cmd_p->buf[s_cmd_p->size]), buf, count))
     {
         ss_retval = -EFAULT;
@@ -175,17 +193,20 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
         return ss_retval;
     }
     s_cmd_p->size += count;
-    PDEBUG("aesd_write: cmd write %zu %s", s_cmd_p->size, s_cmd_p->buf);
+    PDEBUG("MAIN.c: CMD write %zu %s", s_cmd_p->size, s_cmd_p->buf);
 
+    // Check for new line character
     if (s_cmd_p->buf[s_cmd_p->size - 1] != '\n')
     {
         ss_retval = count;
         *f_pos += count;
+
+        // Unlock the device (release the mutex)
         mutex_unlock(&(s_dev_p->lock));
         return ss_retval;
     }
 
-    /* Write to circular buffer */
+    // Write to circular buffer 
     buffptr = kmalloc(s_cmd_p->size, GFP_KERNEL);
     if (!buffptr)
     {
@@ -194,16 +215,16 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
         return ss_retval;
     }
     memcpy(buffptr, s_cmd_p->buf, s_cmd_p->size);
-    PDEBUG("aesd_write: write cmd @ %p", buffptr);
+    PDEBUG("MAIN.c: Write CMD @ %p", buffptr);
     s_entry.buffptr = buffptr;
     s_entry.size = s_cmd_p->size;
     u8_buffptr_rtn_p = aesd_circular_buffer_add_entry(&(s_dev_p->circbuf), &s_entry);
     if (u8_buffptr_rtn_p)
     {
-        PDEBUG("aesd_write: release cmd @ %p", u8_buffptr_rtn_p);
+        PDEBUG("MAIN.c: Release CMD @ %p", u8_buffptr_rtn_p);
         kfree(u8_buffptr_rtn_p);
     }
-    PDEBUG("aesd_write: circbuf write %zu %s", s_entry.size, s_entry.buffptr);
+    PDEBUG("MAIN.c: Circbuf write %zu %s", s_entry.size, s_entry.buffptr);
     s_cmd_p->size = 0;
 
     ss_retval = count;

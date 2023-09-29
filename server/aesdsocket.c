@@ -118,6 +118,7 @@ static void time_thread(union sigval sv)
 }
 #endif
 
+
 int parse_cmd(char *buf, size_t buflen, struct aesd_seekto *seekto)
 {
 	char *cmd, *arg1, *arg2;
@@ -178,6 +179,7 @@ static void *serve_thread(void *arg)
 	size_t sendbuflen;
 	thread_args_t *targs = arg;
 	FILE *fp;
+	int fd;
 	struct aesd_seekto seekto;
 
 	targs->rv = 0;
@@ -232,7 +234,8 @@ static void *serve_thread(void *arg)
 				}
 				else
 				{
-					if (ioctl(fileno(fp), AESDCHAR_IOCSEEKTO, &seekto) == 0)
+					fd = fileno(fp);
+					if (ioctl(fd, AESDCHAR_IOCSEEKTO, &seekto) == 0)
 					{
 						while((sendbuflen = fread(sendbuf, sizeof(char), MAXBUFLEN, fp)) > 0) 
 						{
