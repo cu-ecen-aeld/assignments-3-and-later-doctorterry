@@ -11,13 +11,22 @@
  *
  */
 
+#include <linux/module.h>
+#include <linux/init.h>
+#include <linux/printk.h>
+#include <linux/types.h>
+#include <linux/cdev.h>
+#include <linux/fs.h> // file_operations
+#include <linux/slab.h>
+#include <linux/types.h>
 #include "aesdchar.h"
-
-#define FALSE 0
-#define TRUE 1
+#include "aesd_ioctl.h"
 
 int aesd_major = 0; // use dynamic major
 int aesd_minor = 0;
+
+MODULE_AUTHOR("doctorterry"); /** TODO: fill in your name **/
+MODULE_LICENSE("Dual BSD/GPL");
 
 MODULE_AUTHOR("Piistachyoo");
 MODULE_LICENSE("Dual BSD/GPL");
