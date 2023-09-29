@@ -11,21 +11,21 @@
  *
  */
 
-#include <linux/module.h>
-#include <linux/init.h>
-#include <linux/printk.h>
-#include <linux/types.h>
-#include <linux/cdev.h>
-#include <linux/fs.h> // file_operations
-#include <linux/slab.h>
-#include <linux/types.h>
+//#include <linux/module.h>
+//#include <linux/init.h>
+//#include <linux/printk.h>
+//#include <linux/types.h>
+//#include <linux/cdev.h>
+//#include <linux/fs.h> // file_operations
+//#include <linux/slab.h>
+//#include <linux/types.h>
 #include "aesdchar.h"
 #include "aesd_ioctl.h"
 
 int aesd_major = 0; // use dynamic major
 int aesd_minor = 0;
 
-MODULE_AUTHOR("Your Name Here"); /** TODO: fill in your name **/
+MODULE_AUTHOR("doctorterry"); /** TODO: fill in your name **/
 MODULE_LICENSE("Dual BSD/GPL");
 
 struct aesd_dev aesd_device;
