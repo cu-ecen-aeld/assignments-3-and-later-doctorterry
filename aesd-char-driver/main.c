@@ -56,23 +56,52 @@ int aesd_release(struct inode *inode, struct file *filp)
 
 loff_t aesd_llseek(struct file *filp, loff_t off, int whence)
 {
-    struct aesd_dev *s_dev_p = filp->private_data;
-    loff_t off_ret;
-    loff_t size;
+    uint8_t index;
+    struct aesd_dev *dev = filp->private_data;
+    loff_t retval;
+    loff_t buffer_size = 0;
 
-    PDEBUG("llseek");
-
-    if (mutex_lock_interruptible(&(s_dev_p->lock)))
-    {
+    if (mutex_lock_interruptible(&(dev->lock)))
         return -ERESTARTSYS;
+
+    switch (whence) {
+    case SEEK_SET: // Use specified offset as file position
+        retval = f_offs;
+        PDEBUG("Used SEEK_SET to set the offset to %lld\n", retval);
+        break;
+
+    case SEEK_CUR: // Increment or decrement file position
+        retval = filp->f_pos + f_offs;
+        PDEBUG("Used SEEK_CUR to set the offset to %lld\n", retval);
+        break;
+
+    case SEEK_END: // Use EOF as file position
+        for (index = 0; index < AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;
+             index++) {
+            if (dev->buffer.entry[index].buffptr) {
+                buffer_size += dev->buffer.entry[index].size;
+            }
+        }
+        retval = buffer_size + f_offs;
+        PDEBUG("Used SEEK_END to set the offset to %lld\n", retval);
+        break;
+
+    default:
+        retval = -EINVAL;
+        goto inCaseOfFailure;
     }
 
-    size = aesd_circular_buffer_get_size(&(s_dev_p->circbuf));
-    off_ret = fixed_size_llseek(filp, off, whence, size);
+    if (retval < 0) {
+        PDEBUG("Invalid arguments, offset can't be set to %lld\n", retval);
+        retval = -EINVAL;
+        goto inCaseOfFailure;
+    }
 
-    mutex_unlock(&(s_dev_p->lock));
+    filp->f_pos = retval;
 
-    return off_ret;
+inCaseOfFailure:
+    mutex_unlock(&(dev->lock));
+    return retval;
 }
 
 ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
