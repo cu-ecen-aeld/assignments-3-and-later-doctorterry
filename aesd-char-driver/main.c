@@ -78,8 +78,8 @@ loff_t aesd_llseek(struct file *filp, loff_t off, int whence)
     case SEEK_END: // Use EOF as file position
         for (index = 0; index < AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;
              index++) {
-            if (dev->buffer.entry[index].buffptr) {
-                buffer_size += dev->buffer.entry[index].size;
+            if (dev->circbuf.entry[index].buffptr) {
+                buffer_size += dev->circbuf.entry[index].size;
             }
         }
         retval = buffer_size + f_offs;
