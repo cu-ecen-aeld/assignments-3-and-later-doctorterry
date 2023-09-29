@@ -71,7 +71,7 @@ loff_t aesd_llseek(struct file *filp, loff_t off, int whence)
         break;
 
     case SEEK_CUR: // Increment or decrement file position
-        retval = filp->f_pos + f_offs;
+        retval = filp->f_pos + off;
         PDEBUG("Used SEEK_CUR to set the offset to %lld\n", retval);
         break;
 
@@ -82,7 +82,7 @@ loff_t aesd_llseek(struct file *filp, loff_t off, int whence)
                 buffer_size += dev->circbuf.entry[index].size;
             }
         }
-        retval = buffer_size + f_offs;
+        retval = buffer_size + off;
         PDEBUG("Used SEEK_END to set the offset to %lld\n", retval);
         break;
 
