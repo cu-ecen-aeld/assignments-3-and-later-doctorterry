@@ -34,11 +34,15 @@ int aesd_open(struct inode *inode, struct file *filp)
 {
     struct aesd_dev *dev; /* device information */
 
-    PDEBUG("open");
+    PDEBUG("MAIN.c: Open");
     /**
      * TODO: handle open
      */
+
+    // Get the device structure from the inode private data
     dev = container_of(inode->i_cdev, struct aesd_dev, cdev);
+
+    // Store the device structure in the file private data
     filp->private_data = dev;
 
     return 0;
@@ -46,7 +50,7 @@ int aesd_open(struct inode *inode, struct file *filp)
 
 int aesd_release(struct inode *inode, struct file *filp)
 {
-    PDEBUG("release");
+    PDEBUG("MAIN.c: Release");
     /**
      * TODO: handle release
      */
@@ -65,17 +69,21 @@ loff_t aesd_llseek(struct file *filp, loff_t off, int whence)
         return -ERESTARTSYS;
 
     switch (whence) {
-    case SEEK_SET: // Use specified offset as file position
+
+    // Use specified offset as file position
+    case SEEK_SET: 
         retval = off;
-        PDEBUG("Used SEEK_SET to set the offset to %lld\n", retval);
+        PDEBUG("MAIN.c: SEEK_SET set the offset to %lld\n", retval);
         break;
 
-    case SEEK_CUR: // Increment or decrement file position
+    // Increment or decrement file position
+    case SEEK_CUR: 
         retval = filp->f_pos + off;
-        PDEBUG("Used SEEK_CUR to set the offset to %lld\n", retval);
+        PDEBUG("MAIN.c: SEEK_CUR set the offset to %lld\n", retval);
         break;
 
-    case SEEK_END: // Use EOF as file position
+    // Use EOF as file position
+    case SEEK_END: 
         for (index = 0; index < AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;
              index++) {
             if (dev->circbuf.entry[index].buffptr) {
@@ -83,23 +91,23 @@ loff_t aesd_llseek(struct file *filp, loff_t off, int whence)
             }
         }
         retval = buffer_size + off;
-        PDEBUG("Used SEEK_END to set the offset to %lld\n", retval);
+        PDEBUG("MAIN.c: SEEK_END set the offset to %lld\n", retval);
         break;
 
     default:
         retval = -EINVAL;
-        goto inCaseOfFailure;
+        mutex_unlock(&(dev->lock));
+        return retval;
     }
 
     if (retval < 0) {
         PDEBUG("Invalid arguments, offset can't be set to %lld\n", retval);
         retval = -EINVAL;
-        goto inCaseOfFailure;
+        mutex_unlock(&(dev->lock));
+        return retval;
     }
 
     filp->f_pos = retval;
-
-inCaseOfFailure:
     mutex_unlock(&(dev->lock));
     return retval;
 }
