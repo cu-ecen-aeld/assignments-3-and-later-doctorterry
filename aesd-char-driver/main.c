@@ -79,7 +79,7 @@ loff_t aesd_llseek(struct file *filp, loff_t off, int whence)
         for (index = 0; index < AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;
              index++) {
             if (dev->circbuf.entry[index].buffptr) {
-                buffer_size += dev->circbuf.entry[index].size;git 
+                buffer_size += dev->circbuf.entry[index].size;
             }
         }
         retval = buffer_size + f_offs;
