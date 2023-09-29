@@ -112,8 +112,7 @@ loff_t aesd_llseek(struct file *filp, loff_t off, int whence)
     return retval;
 }
 
-ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
-                  loff_t *f_pos)
+ssize_t aesd_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
 {
     ssize_t ss_retval = 0;
     struct aesd_dev *s_dev_p = filp->private_data;
@@ -133,19 +132,19 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
     if (!s_entry_p)
     {
         ss_retval = 0;
-        goto out;
+        mutex_unlock(&(s_dev_p->lock));
+        return ss_retval;
     }
     PDEBUG("aesd_read: %s", s_entry_p->buffptr);
     us_rcnt = s_entry_p->size - us_entry_offset;
     if (copy_to_user(buf, &s_entry_p->buffptr[us_entry_offset], us_rcnt))
     {
         ss_retval = -EFAULT;
-        goto out;
+        mutex_unlock(&(s_dev_p->lock));
+        return ss_retval;
     }
     *f_pos += us_rcnt;
     ss_retval = us_rcnt;
-
-out:
     mutex_unlock(&(s_dev_p->lock));
     return ss_retval;
 }
@@ -172,7 +171,8 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     if (copy_from_user(&(s_cmd_p->buf[s_cmd_p->size]), buf, count))
     {
         ss_retval = -EFAULT;
-        goto out;
+        mutex_unlock(&(s_dev_p->lock));
+        return ss_retval;
     }
     s_cmd_p->size += count;
     PDEBUG("aesd_write: cmd write %zu %s", s_cmd_p->size, s_cmd_p->buf);
@@ -181,7 +181,8 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     {
         ss_retval = count;
         *f_pos += count;
-        goto out;
+        mutex_unlock(&(s_dev_p->lock));
+        return ss_retval;
     }
 
     /* Write to circular buffer */
@@ -189,7 +190,8 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
     if (!buffptr)
     {
         ss_retval = -ENOMEM;
-        goto out;
+        mutex_unlock(&(s_dev_p->lock));
+        return ss_retval;
     }
     memcpy(buffptr, s_cmd_p->buf, s_cmd_p->size);
     PDEBUG("aesd_write: write cmd @ %p", buffptr);
@@ -206,8 +208,6 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 
     ss_retval = count;
     *f_pos += count;
-
-out:
     mutex_unlock(&(s_dev_p->lock));
     return ss_retval;
 }
